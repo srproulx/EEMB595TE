@@ -1,0 +1,38 @@
+---
+title: 'Week 2 challenge: Population imm-em sim'
+author: "Stephen Proulx"
+date: "9/30/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# EEMB 595TE Fall 2021
+# Programming challenge, Week 2
+Yes, it is technically already week 2. We will use this week to do a very simple simulation as described in Chapter 2 of the Wilson book. The main goals are:
+
+* Get experience using git to store your work
+* Write a simulation doing sequential steps 
+* Use random number generators to determine an outcome for the simulation
+* Store the output of the simulation in a way that you can use/plot
+* Perform multiple simulations with results in a single dataframe and plot the results
+
+
+The model we will code up is one with a single focal population with $n(t)$ individuals at time $t$. At each time step there is a probability $\alpha$ that a single individual migrates into the population, and a probability $\beta$ that a single individual migrates out of the population. This model doesn't make a ton of sense, since we might expect that each individual has the same probability of deciding to leave, but don't worry about that for now, for now our focus is on turning the words into code. 
+
+Useful R commands
+
+* `runif(k)` returns $k$ random numbers between 0 and 1.
+* `tibble()` to create a tibble dataframe.
+* `data.frame()` to create a regular dataframe.
+* If you need to do a numerical calculation that includes a "if" logic element, you can use the handy feature that things that evaluate "true" are numerically equal to 1, and "false" are numerically equal to 0. So, add 1 to $x$ if $y>z$ looks like `x <- x + (y>z)*1`
+
+
+For the actual coding: 
+
+* Put in some comments. How would future you know what you meant to do and why?
+* Deposit your work into your git as you go, use the compare tool to see your changes.
+
+

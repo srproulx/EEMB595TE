@@ -1,0 +1,35 @@
+---
+title: 'Week 3 challenge: More realistid immigration sim'
+author: "Stephen Proulx"
+date: "10/07/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# EEMB 595TE Fall 2021
+## Programming challenge, Week 3
+
+Following up from last week, we will talk about how to incorporate more ecological realism into the population model. In the prior model, either more individuals came in than left, or more left than came in, so the population size would tend to go to 0 or to infinity. The model assumed that the probability that a single individual came in or left was constant in time and independent of population size, and that only a single individual moved in/out during a time step.
+
+Some factors that you might want to consider
+* Each individual has a constant per capita probability of leaving, but only one can leave per time step. so $\beta(n) = \beta_0 * n$ with the constraint that $\beta(n) <= 1$. 
+* Each individual has a constant probability of leaving per time and more than one can leave per time step. So if there are $n$ individuals, the number who leave would be $y_{out} \sim \mathrm{Binomial}(n,\beta)$
+* More than one individual can come in, so $y_{in} \sim \mathrm{Poisson}(\alpha) $.
+* The resource level in the deme might affect how many individuals leave, so $\beta(n)$ could be an increasing function. It would need to remain bounded between 0 and 1
+* The number coming in might depend on the attractiveness of the deme based on population size, so $\alpha(n)$ could be a decreasing function of $n$. 
+* The rate of dispersal might be seasonal. 
+
+I would suggest thinking of an organism, and then brainstorming ideas about what features would be important to consider.  
+
+Useful R commands
+
+* `rbinom(n,size,prob)` returns $n$ random numbers drawn from a binomial distribution where $size$ individual trials each have probability $prob$ 
+* `rpois(n,lambda)` returns $n$ random integers drawn from a Poisson distribution with parameter $lambda$
+ 
+
+

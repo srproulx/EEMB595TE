@@ -1,0 +1,119 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Week 3 challenge: More realistid immigration sim},
+  pdfauthor={Stephen Proulx},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifluatex
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+
+\title{Week 3 challenge: More realistid immigration sim}
+\author{Stephen Proulx}
+\date{10/07/2021}
+
+\begin{document}
+\maketitle
+
+\hypertarget{eemb-595te-fall-2021}{%
+\section{EEMB 595TE Fall 2021}\label{eemb-595te-fall-2021}}
+
+\hypertarget{programming-challenge-week-3}{%
+\subsection{Programming challenge, Week
+3}\label{programming-challenge-week-3}}
+
+Following up from last week, we will talk about how to incorporate more
+ecological realism into the population model. In the prior model, either
+more individuals came in than left, or more left than came in, so the
+population size would tend to go to 0 or to infinity. The model assumed
+that the probability that a single individual came in or left was
+constant in time and independent of population size, and that only a
+single individual moved in/out during a time step.
+
+Some factors that you might want to consider * Each individual has a
+constant per capita probability of leaving, but only one can leave per
+time step. so \(\beta(n) = \beta_0 * n\) with the constraint that
+\(\beta(n) <= 1\). * Each individual has a constant probability of
+leaving per time and more than one can leave per time step. So if there
+are \(n\) individuals, the number who leave would be
+\(y_{out} \sim \mathrm{Binomial}(n,\beta)\) * More than one individual
+can come in, so \$y\_\{in\} \sim \mathrm{Poisson}(\alpha) \$. * The
+resource level in the deme might affect how many individuals leave, so
+\(\beta(n)\) could be an increasing function. It would need to remain
+bounded between 0 and 1 * The number coming in might depend on the
+attractiveness of the deme based on population size, so \(\alpha(n)\)
+could be a decreasing function of \(n\). * The rate of dispersal might
+be seasonal.
+
+I would suggest thinking of an organism, and then brainstorming ideas
+about what features would be important to consider.
+
+Useful R commands
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{rbinom(n,size,prob)} returns \(n\) random numbers drawn from a
+  binomial distribution where \(size\) individual trials each have
+  probability \(prob\)
+\item
+  \texttt{rpois(n,lambda)} returns \(n\) random integers drawn from a
+  Poisson distribution with parameter \(lambda\)
+\end{itemize}
+
+\end{document}

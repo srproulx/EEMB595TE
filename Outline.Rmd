@@ -1,0 +1,23 @@
+---
+title: "Outline"
+author: "Stephen Proulx"
+date: "9/30/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# EEMB 595TE Fall 2021
+# Outline for the upcoming weeks
+* (10/7) Single individual in-out migration model
+* (10/14) Custom immigration/emigration model 
+* (10/21) Lotka-Volterra population growth with stochasticity
+* (10/28) Stochastic host-parasitoid dynamics from another dimension
+* (11/4) Epigenetic inheritance model 
+
+
+

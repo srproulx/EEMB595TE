@@ -1,0 +1,112 @@
+---
+title: "Week 3: population in-out sim"
+author: "Stephen R. Proulx"
+date: "9/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+```
+
+## A single simulation of immigration/emmigration 
+
+Describe the model
+
+```{r set_paramaters}
+immi=0.15
+emmi=0.2
+tmax=5000
+n0=40
+```
+
+
+Initialize a dataframe. Make a column for the time step, a column for the random number used to determine immigration, a column for the random number used to determine emmigration, and a column for the number of individuals. Just fill this last column with a single number, the initial populaiton size
+```{r initialize_data}
+popsize <- tibble(time=1:tmax , rand1=runif(tmax), rand2=runif(tmax), num=n0 )
+
+```
+
+```{r loop_sim}
+for(i in 2:tmax){ 
+  popsize$num[i] <- (immi>popsize$rand1[i])*1-(emmi>popsize$rand2[i])*1 + popsize$num[i-1]
+  popsize$num[i]<- (popsize$num[i]<0)*1+(popsize$num[i]>0)*popsize$num[i]
+}
+
+```
+
+
+```{r}
+ggplot(data=popsize , aes(x=time,y=num)) + geom_point()
+```
+
+ 
+## Now do a bunch of simulations at once
+
+Initialize a dataframe. Make a column for the time step, a column for the random number used to determine immigration, a column for the random number used to determine emmigration, and a column for the number of individuals. Just fill this last column with a single number, the initial populaiton size
+
+how many simulations to do?
+```{r}
+k=20
+```
+
+```{r initialize_data}
+
+popsize <- tibble(run=rep(1:k,each=tmax), time=rep(1:tmax,k) , rand1=runif(tmax*k), rand2=runif(tmax*k), num=n0 )
+
+```
+
+```{r loop_sim}
+for(j in 1:k){
+  for(i in 2:(tmax)){ 
+    popsize$num[((j-1)*tmax+i)] <- (immi>popsize$rand1[((j-1)*tmax+i)])*1-(emmi>popsize$rand2[((j-1)*tmax+i)])*1 + popsize$num[((j-1)*tmax+i)-1]
+    popsize$num[((j-1)*tmax+i)]<- (popsize$num[((j-1)*tmax+i)]<0)*1+(popsize$num[((j-1)*tmax+i)]>0)*popsize$num[((j-1)*tmax+i)]
+  }
+  }
+
+```
+
+
+```{r}
+summarize_sims <- group_by(popsize, time) %>% summarize(
+mean_n = mean(num),
+lower_n = quantile(num, 0.10), upper_n = quantile(num, 0.90)
+) %>% ungroup()
+```
+
+```{r}
+ggplot(data=summarize_sims , aes(x=time,y=mean_n)) + 
+  geom_point()+
+  geom_ribbon(aes(ymin=lower_n,ymax=upper_n), alpha = 0.5, fill = "blue")
+```
+
+recode to get differences in pop size
+```{r}
+popsize<- popsize %>%
+  group_by(run) %>%
+  mutate(deltanum = num-lag(num)) %>%
+  ungroup()
+
+```
+
+summarize by current popsize
+
+
+```{r}
+summarize_sims_by_n <- filter(popsize,time>1) %>%
+  group_by(num) %>% summarize(
+delta_n = mean(deltanum),
+lower_n = quantile(deltanum, 0.10), upper_n = quantile(deltanum, 0.90)
+) %>% ungroup()
+```
+
+
+```{r}
+ggplot(data=summarize_sims_by_n , aes(x=num,y=delta_n)) + 
+  geom_point()+
+  geom_ribbon(aes(ymin=lower_n,ymax=upper_n), alpha = 0.5, fill = "blue")+
+  ylim(c(-2,2))
+```

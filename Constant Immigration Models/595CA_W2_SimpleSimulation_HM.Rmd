@@ -1,0 +1,130 @@
+---
+title: "595CA_W2_SimpleSimulation"
+author: "Stephen Proulx, w/ mods from Holly Moeller"
+date: "10/7/2021"
+output: html_document
+---
+
+
+# EEMB 595TE Fall 2021
+## Programming challenge, Week 2
+Yes, it is technically already week 2. We will use this week to do a very simple simulation as described in Chapter 2 of the Wilson book. The main goals are:
+
+* Get experience using git to store your work
+* Write a simulation doing sequential steps 
+* Use random number generators to determine an outcome for the simulation
+* Store the output of the simulation in a way that you can use/plot
+* Perform multiple simulations with results in a single dataframe and plot the results
+
+
+The model we will code up is one with a single focal population with $n(t)$ individuals at time $t$. At each time step there is a probability $\alpha$ that a single individual migrates into the population, and a probability $\beta$ that a single individual migrates out of the population. This model doesn't make a ton of sense, since we might expect that each individual has the same probability of deciding to leave, but don't worry about that for now, for now our focus is on turning the words into code. 
+
+$$
+n(t+1) = n(t)...whoops I don't know how to write this
+$$
+
+Useful R commands
+
+* `runif(k)` returns $k$ random numbers between 0 and 1. (note that for the longest time, Holly thought this was "runif")
+* `tibble()` to create a tibble dataframe.
+* `data.frame()` to create a regular dataframe.
+* If you need to do a numerical calculation that includes a "if" logic element, you can use the handy feature that things that evaluate "true" are numerically equal to 1, and "false" are numerically equal to 0. So, add 1 to $x$ if $y>z$ looks like `x <- x + (y>z)*1`
+
+
+For the actual coding: 
+
+* Put in some comments. How would future you know what you meant to do and why?
+* Deposit your work into your git as you go, use the compare tool to see your changes.
+
+## Immigration-Emigration Simulation
+### Single-population simulation
+First let's quickly code the simulation for a single population. We'll set the probabilities of immigration and emigration to be equal so that the population should oscillate around the same mean population size (the initial population size) over time. (It's worth noting that there's an absorbing boundary at N = 0, though! However, the toy simulation below doesn't have this boundary put in.)
+
+```{r}
+tset <- seq(from = 0, to = 100, by = 1) # create a timeseries. because this is a discrete time model, we'll count by 1.
+Nset <- NaN*tset; Nset[1] <- 500 # create a population vector
+
+alpha <- .3  # probability of new migrant entering the population
+beta <- .3   # probability of member of population leaving
+
+for(i in 2:length(tset)){ # for every timestep
+  N <- Nset[i-1]
+  if(runif(1) < alpha){N <- N + 1} # Draw random #, compare to alpha, add to pop'n
+  if(runif(1) < beta){N <- N - 1} # Draw random #, compare to beta, subtr from pop'n
+  Nset[i] <- N
+}
+
+plot(tset,Nset,type='l',las=1,xlab='Time',ylab='Population Size')
+```
+
+
+### Multi-population simulation
+
+Now, let's run the simulation many times and plot a nicer graph that shows all of the populations, as well as the mean trajectory. To do this, we'll employ some additional R tools:
+```{r}
+# matrix() <- generates a matrix. We'll use this so that we can track many populations simultaneously (and run our simulation vectorized to save time)
+matrix(c(1,1,2,2),nrow=2,ncol=2) # This makes a 2x2 matrix populated with the values in the concatenate string. 
+
+# runif(1) < .5 <- tests whether the random number is less than a probability (in this case, .5)
+runif(1) < .5
+
+# Notice how the last line of code gave us a "True" or "False" answer? We are going to multiply by 1 to convert from Boolean (T/F) to binary (1/0):
+1*(runif(1) < .5)
+#(Note that I figured out how to do this by googling "R convert true false into 1 0" this very morning!)
+
+# The reason we're doing this is because now, we can very quickly generate a whole vector of random numbers, assess whether these random numbers say, e.g., we should add an individual to the population, and then just add that individual in using a +1. E.g.,:
+1*(runif(5) < .5)
+
+# The final "trick" in the simulation below is that I didn't want my population to fall below zero. To prevent my population from going negative, I used a maximization function. E.g.:
+max(-5,0)
+
+# But it's a little tricky in this case because we have a vector of population sizes, e.g.:
+N_t <- c(-1,2,10,1,0)
+# Now, the max() function won't work easily. E.g:
+max(N_t)
+max(rbind(N_t,rep(0,length(N_t))))
+
+# Instead, we're going to use the "apply()" function.
+# First, we'll pair each of our population sizes with a "0":
+rbind(N_t,rep(0,length(N_t))) # rbind = bind rows together; rep = repeat
+
+# Now, we'll apply the max function to each column. Syntax:
+# apply(array, choice of array dimension, function to be applied)
+apply(rbind(N_t,rep(0,length(N_t))),  2,  FUN = "max")
+
+```
+load tic-toc package to time the simulation
+```{r}
+library(tictoc)
+```
+
+
+Now that we've learned these tools, let's compile them to run a simulation for many populations!
+
+```{r}
+tic()
+tset <- seq(from = 0, to = 5000, by = 1) # create a timeseries. because this is a discrete time model, we'll count by 1.
+numpops <- 200 # Let's run our simulation for 200 populations
+N.df <- matrix(rep(NaN,length(tset)*numpops),nrow = numpops, ncol = length(tset)) # Makes a matrix to hold population sizes. This matrix has a column for every timestep, and a row for every population.
+N.df[,1] <- 500 # initialize the populations with 500 individuals
+
+alpha <- 0.9  # probability of a new migrant entering the population
+beta <- 0.9   # probability of one member of population leaving
+
+for(i in 2:length(tset)){ # for every timestep
+  N <- N.df[,i-1]
+  N <- N + 1*(runif(numpops) < alpha) # Draws a vector of random numbers, compares to alpha, multiplies by 1 to convert Boolean to binary, adds individual if rand # > alpha
+  N <- N - 1*(runif(numpops) < beta) # Draws a vector of random numbers, compares to beta, multiplies by 1 to convert Boolean to binary, subtracts individual if rand # > beta
+  N.df[,i] <- apply(rbind(N,rep(0,numpops)),2,FUN='max') # make sure there are no negative populations
+}
+
+toc()
+
+plot(tset,N.df[1,],type='n',las=1,xlab='Time',ylab='Population Size',ylim=c(min(N.df),max(N.df)))
+for(i in 1:numpops){lines(tset,N.df[i,],col='gray80')}
+lines(tset,colMeans(N.df),lwd=3)
+legend(0,max(N.df),legend=c("Single Population","Mean of Populations"),lwd=c(1,3),col=c("gray80","black"))
+```
+
+
+

@@ -1,0 +1,117 @@
+---
+title: 'Week 2 challenge: Population imm-em sim'
+author: "Kayla Kauffman"
+date: "10/6/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# outline by Stephen Proulx
+```
+```{r, include = FALSE}
+library(tidyverse)
+```
+
+# EEMB 595TE Fall 2021
+# Programming challenge, Week 2
+Yes, it is technically already week 2. We will use this week to do a very simple simulation as described in Chapter 2 of the Wilson book. The main goals are:
+
+* Get experience using git to store your work
+* Write a simulation doing sequential steps 
+* Use random number generators to determine an outcome for the simulation
+* Store the output of the simulation in a way that you can use/plot
+* Perform multiple simulations with results in a single dataframe and plot the results
+
+
+The model we will code up is one with a single focal population with $n(t)$ individuals at time $t$. At each time step there is a probability $\alpha$ that a single individual migrates into the population, and a probability $\beta$ that a single individual migrates out of the population. This model doesn't make a ton of sense, since we might expect that each individual has the same probability of deciding to leave, but don't worry about that for now, for now our focus is on turning the words into code. 
+
+Useful R commands
+
+* `runif(k)` returns $k$ random numbers between 0 and 1.
+* `tibble()` to create a tibble dataframe.
+* `data.frame()` to create a regular dataframe.
+* If you need to do a numerical calculation that includes a "if" logic element, you can use the handy feature that things that evaluate "true" are numerically equal to 1, and "false" are numerically equal to 0. So, add 1 to $x$ if $y>z$ looks like `x <- x + (y>z)*1`
+
+
+For the actual coding: 
+
+* Put in some comments. How would future you know what you meant to do and why?
+* Deposit your work into your git as you go, use the compare tool to see your changes.
+
+# my code  
+
+write a function, though could do this without...
+```{r}
+
+# loop to determine population (n) at time (t) with random probability of individuals immigrating (alpha) and emmigrating (beta). 
+imm_em_funct <- function(n = 10, #starting population size
+                         t = 100, # number of time steps
+                         alpha = 0.1, #probability of immigration
+                         beta = 0.1, #probability of emigration
+                         seed = runif(1, 1, 10000)) { #optional seed to get repeatable results
+  
+  set.seed(seed)
+  rand <- runif((t * 2)) #random numbers with uniform distribution, need twice the number of iterations worth so don't compare alpha and beta to same number (see t + i below)
+  
+  event <- c(NA) # no event at timepoint 0
+  pop_size <- c(n) # starting population
+  
+  for (i in 1:t) {
+    # event for each loop
+    ev = if_else(rand[i] < alpha, 1, 0) # + 1 if grows
+    ev = if_else(rand[t + i] < beta, ev - 1, ev) # - 1 if shrinks
+    
+    event <- c(event, ev)
+    
+    pop <- pop_size[i] + ev #update population size
+    
+    if (pop > 0) { # if pop > 0 add pop to pop_size 
+      pop_size <- c(pop_size, pop)
+    } else  { #if pop <= 0 add 0 to pop_size (can't have neg pop_size)
+      pop_size <- c(pop_size, 0)
+    }
+  }
+  return(data.frame(
+    step = 0:t,
+    pop_size,
+    event
+  ))
+}
+```
+
+run the function a couple of times
+```{r}
+run1 <- imm_em_funct(n = 10, t = 5000, alpha = 0.1, beta = 0.1, seed = 321)
+run2 <- imm_em_funct(n = 10, t = 5000, alpha = 0.1, beta = 0.1, seed = 96)
+```
+
+plot the population change for each simulation
+```{r}
+ggplot(run1, aes(x = step, y = pop_size)) + geom_line()
+ggplot(run2, aes(x = step, y = pop_size)) + geom_line()
+```
+
+average of many runs  
+```{r}
+runs <- data.frame()
+for (i in 1:100) {
+  res <- imm_em_funct(n = 10, t = 100, alpha = 0.1, beta = 0.1)
+  runs <- rbind(runs, res)
+}
+ggplot(data = runs, aes(x = step, y = pop_size)) + geom_line() + geom_smooth()
+
+runavg <- runs %>% 
+  group_by(step) %>% 
+  summarise(pop_size = mean(pop_size), pop_sd = sd(pop_size))
+ggplot() +
+  geom_point(data = runs, aes(x = step, y = pop_size)) +
+  geom_line(data = runavg, aes(x = step, y = pop_size))
+```
+
+# other ideas  
+```{r}
+## grab a few from github
+```
+

@@ -1,0 +1,47 @@
+---
+title: "Week 5: Stochastic Lotka-Volterra"
+author: "Stephen R. Proulx"
+date: "10/13/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tictoc)
+```
+
+## A single simulation of Lotka-Volterra type  
+
+The idea is that we start with a continuous-time differential equation and then develop a discrete-time discrete-population size model that (in some sense) approximates the continuous time system. It is equally valid to consider a discrete time system to start with, for example if your organism is an annual reproducing organism this might make the most sense. 
+
+The continuous time system is something like 
+$$\frac{dN}{dt} = \alpha * N (1- \frac{N}{K}) $$. 
+
+As the book points out, there is more than one way to get this differential equation from a story about how interactions cause birth and death rates to be density dependent. In the differential equation version, multiple story models map onto a single equation. But (in this case, not always), when we make discrete-time models of this system the different underlying models produce different results.
+
+We will consider a system where the probabilities of birth and death can be defined per (a vague) unit of time, and then consider a model with smaller time units.
+
+We'll use the first model from the book, where birth probabilities are density dependent but death probabilities are constant. These are the *per capita* probabilities :
+$$p(\mathrm{birth}) = \alpha (1 - \frac{N}{k} )\\
+p(\mathrm{death}) = \beta  $$
+Now we define the probability in one time step of our model as
+$$\alpha_{step} = \alpha \delta \\
+\beta_{step} = \beta \delta $$
+
+
+Here are some parameters to use in the simulation:
+```{r set_paramaters}
+alpha=0.2
+beta=0.1
+k=40
+delta=0.1
+tmax=5000
+n0=20
+alpha_step=alpha*delta
+beta_step=beta*delta
+```
+
+The challenge this week is to code up the system with density dependence in the birth probabilities. Report the distribution, or the mean and variance, of population size. Think about whether you want to run multiple simulations or one long simulation.
+

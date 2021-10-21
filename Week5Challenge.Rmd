@@ -1,0 +1,50 @@
+---
+title: "Week 6: Metapopulation Persistence"
+author: "Stephen R. Proulx"
+date: "10/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tictoc)
+```
+
+## Metapopulation models
+The classic paper on metapopulations is Levins' 1969 paper (Levins, R. 1969. Some demographic and genetic consequences of environmental hetereogeneity for biological control. Bulletin of the EntomologicaI Society of America 15:237–240). The idea of a metapopulation is that species exist in local *patches* of suitable habitat, and these patches may undergo random local extinction. Empty patches may be colonized by dispersing individuals and become occupied again. One famous example is of butterflies in nordic island archpelagos, where deep freezes caused by localized wheather conditions can cause local extinction, and butterflies occaisionally fly between islands. Other examples are of animals that colonize decaying fruit or carcasses, and weed plants that colonize disturbed areas. 
+
+Levins considered a scenario where there is a constant rate of extinction of patches, and where colonization happens through a well-mixed global disperser pool. This is as if our butterlies leave their island, fly to a central holding area, and then fly from there to new patches where the distance to patches does not affect their arrival chances.
+
+Mathematically, this can be written as a simple differential equation
+$$
+\frac{dp}{dt} = m p(t) (1-p(t)) - e p(t),
+$$
+where $p(t)$ is the proportion of patches occupied, $m$ is a measure of "propagule pressure", how many disperers are sent out from an occupied patch, and $e$ is the patch extinction probability. Implicit in this model is the idea that patches, once occupied, immediately reach carrying capacity. Patch extinction is independent of patch state (i.e. pop density or patch age), and colonization is global.
+
+In the Levins model, the metapopulation persists if $e<m$ and reaches an equilibrium of $p^* = \frac{m-e}{m}$. 
+
+In discrete, stochastic models, one can determine the probability that the metapopulation as a whole goes extinct (typically assuming an infinite number of potentially occupiable patches). Similar results can be found where the extinction rate has to be low enough or the metapopulation will certainly go extinct. In the stochastic case, even then the extinction rate is low there is always a chance of extreme bad luck (i.e. all patches simultaneously get squashed by a giant foot) and so the best case scenario is the the probability of extinction is less than 1.
+
+### Simulation challenge
+
+Our challenge is to simulate a simple metapoulation with discrete patches. You can assume that patches immediately reach carrying capacity, so we only have to track the number (and possibly location) of occupied patches. The simplest version of this model uses the global disperser pool and ignores actual space. All patches have the same carrying capacity and the same per time step probability of extinction.
+
+In this framework, we track the number of occupied patches out of the total possible number $N$. Each time step we gather up dispersers, determine which patches go extinct, and distribute colonizers. Colonizers that land in occupied patches don't really do anything, but if they land in an empty patch it then becomes occupied. 
+
+The most challenging part of this exercise is to determine how many empty patches become occupied. There are many possible ways to code this, one is to use a binomial draw to determine how many land in already occupied patches, and then have a separate algorithm for distributing the other colonists among the empty patches. Focus on getting something that works rather than computational efficiency.
+
+### Possible extensions
+
+Instead of assuming that populations reach demographic equilibrium instantaneously, do within patch population dynamics. This requires tracking population size in each patch individually. 
+Mutliple colonists can arrive,  
+
+
+Here are four increasingly complex ways to set up the simulation:
+
+1) A global dispersal pool, collect dispersers from all the patches into a single bin, maybe some of them die, and then place them into patches (potentially based on patch properties, but not based on distance).
+2) A circle of patches (like a daisy chain). Each patch can send propagules to their neighbor
+3) Real space: random points on a plane are occupied, probability of colonizing decreases with distance from the occupied patch of origin.
+4) A fixed network of neigbhor connections. Propagules move between connected patches. Computationally, the network can be described by a single "adjancency matrix". 
+

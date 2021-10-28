@@ -1,0 +1,258 @@
+---
+title: "Week 5 Challenge"
+author: "Raine Detmer"
+date: "10/21/2021"
+output: html_document
+---
+
+
+## Metapopulation models
+The classic paper on metapopulations is Levins' 1969 paper (Levins, R. 1969. Some demographic and genetic consequences of environmental hetereogeneity for biological control. Bulletin of the EntomologicaI Society of America 15:237–240). The idea of a metapopulation is that species exist in local *patches* of suitable habitat, and these patches may undergo random local extinction. Empty patches may be colonized by dispersing individuals and become occupied again. One famous example is of butterflies in nordic island archpelagos, where deep freezes caused by localized wheather conditions can cause local extinction, and butterflies occaisionally fly between islands. Other examples are of animals that colonize decaying fruit or carcasses, and weed plants that colonize disturbed areas. 
+
+Levins considered a scenario where there is a constant rate of extinction of patches, and where colonization happens through a well-mixed global disperser pool. This is as if our butterlies leave their island, fly to a central holding area, and then fly from there to new patches where the distance to patches does not affect their arrival chances.
+
+Mathematically, this can be written as a simple differential equation
+$$
+\frac{dp}{dt} = m p(t) (1-p(t)) - e p(t),
+$$
+where $p(t)$ is the proportion of patches occupied, $m$ is a measure of "propagule pressure", how many disperers are sent out from an occupied patch, and $e$ is the patch extinction probability. Implicit in this model is the idea that patches, once occupied, immediately reach carrying capacity. Patch extinction is independent of patch state (i.e. pop density or patch age), and colonization is global.
+
+In the Levins model, the metapopulation persists if $e<m$ and reaches an equilibrium of $p^* = \frac{m-e}{m}$. 
+
+In discrete, stochastic models, one can determine the probability that the metapopulation as a whole goes extinct (typically assuming an infinite number of potentially occupiable patches). Similar results can be found where the extinction rate has to be low enough or the metapopulation will certainly go extinct. In the stochastic case, even then the extinction rate is low there is always a chance of extreme bad luck (i.e. all patches simultaneously get squashed by a giant foot) and so the best case scenario is the the probability of extinction is less than 1.
+
+### Simulation challenge
+
+Our challenge is to simulate a simple metapoulation with discrete patches. You can assume that patches immediately reach carrying capacity, so we only have to track the number (and possibly location) of occupied patches. The simplest version of this model uses the global disperser pool and ignores actual space. All patches have the same carrying capacity and the same per time step probability of extinction.
+
+In this framework, we track the number of occupied patches out of the total possible number $N$. Each time step we gather up dispersers, determine which patches go extinct, and distribute colonizers. Colonizers that land in occupied patches don't really do anything, but if they land in an empty patch it then becomes occupied. 
+
+The most challenging part of this exercise is to determine how many empty patches become occupied. There are many possible ways to code this, one is to use a binomial draw to determine how many land in already occupied patches, and then have a separate algorithm for distributing the other colonists among the empty patches. Focus on getting something that works rather than computational efficiency.
+
+### Possible extensions
+
+Instead of assuming that populations reach demographic equilibrium instantaneously, do within patch population dynamics. This requires tracking population size in each patch individually. 
+Mutliple colonists can arrive,  
+
+
+Here are four increasingly complex ways to set up the simulation:
+
+1) A global dispersal pool, collect dispersers from all the patches into a single bin, maybe some of them die, and then place them into patches (potentially based on patch properties, but not based on distance).
+2) A circle of patches (like a daisy chain). Each patch can send propagules to their neighbor
+3) Real space: random points on a plane are occupied, probability of colonizing decreases with distance from the occupied patch of origin.
+4) A fixed network of neigbhor connections. Propagules move between connected patches. Computationally, the network can be described by a single "adjancency matrix". 
+
+
+#simple patch occupancy simulation
+
+Label occupied patches with 1 and unoccupied patches with 0. A patch can go from 0-1 (unoccupied becomes occupied), 1-1 (occupied stays occupied), or 0-0 (stays unoccupied). Have a total of mp propagules (where p=number of occupied patches), assume each site has equal probability of being colonized (regardless of whether it is already occupied), so first draw a patch at random from the total number of patches, then draw the number of propagules that colonize that site, repeat until you have gone through all the sites (and assume any leftover propagules die).
+
+```{r}
+#define parameters
+N <- 10#number of patches
+P0 <- 5#intial number of occupied patches
+m <- 5#mean number of individuals that leave each occupied patch
+e <- 0.2 #probability of extinction
+pcol <- 0.5#probability that a propagule colonizes a patch
+
+tmax <- 100#length of simulation
+
+#time values to iterate over
+tset <- seq(from = 0, to = tmax, length.out = tmax)
+
+#empty vector for number of occupied patches at each time point, start with 5 occupied:
+P.simu<-NaN*tset; P.simu[1]<-P0
+
+for(i in 2:length(tset)){
+  
+ #calculate the number of propagules leaving patches and entering the global pool
+	tot_p <- m*P.simu[i-1]
+	
+	#calculate how these propagules are dispersed
+	#make vector of 1s and 0s representing the occupied and unoccupied patches, respectively
+	patch_states <- c(rep(1, P.simu[i-1]), rep(0, N-P.simu[i-1]))
+	
+	rpatch_states <- c(NaN, sample(patch_states, N, replace = FALSE))#randomize the vector of patches (this randomized vector represents the order in which propagules will encounter the patches), also make the first entry NaN for the for loop below
+	
+	col_patches <- NaN*rpatch_states; col_patches[1] <- 0#empty vector for the number of propagules that colonize each patch, make first element 0 (since after this vector gets filled in, want to calculate the number of nonzero elements, and don't want to consider the first element)
+	
+	#now fill these patches in with colonizers
+	#make empty vector for the number of propagules in the global pool, first element is the total number of propagules that were produced in the past time step (note it is assumed any propagules that didn't colonize at the last time step disappeared rather than remaining in the global pool)
+	p_pool <- NaN*rpatch_states; p_pool[1] <- tot_p
+	
+	 for(j in 2:length(rpatch_states)){#for each patch
+
+	  n_col <- rbinom(1, p_pool[j-1], pcol)#the number of propagules that enter the patch is drawn from a binomial distribution where the number of trials is the size of the propagule pool and the probability of each propagule entering is pcol
+	  	  
+	  p_pool[j] <- p_pool[j-1] - n_col#update the size of the propagule pool by subtracting the number of propagules that entered the patch
+	  	  
+	 #determine whether a colonization event happened 
+	  col_patches[j] <- n_col*(1-rpatch_states[j])#if rpatch_states[j]=0 (unoccupied), then col_patches[j] is equal to the number of propagules that entered this patch, if rpatch_states[j]=1 (already occupied), then col_patches[j] is equal to 0 (the patch wasn't colonized), if p_col is equal to 0 then col_patches[j] is 0 in either case
+	 }
+	  
+	  coln <-  sum(col_patches != 0) #the number of colonized patches is the number of non-zero entries in col_patches
+
+	#calculate which patches go extinct 
+	 #first update the number of occupied patches based on the above calculations:
+	  P.temp <- P.simu[i-1] + coln#the number of occupied patches is the number that were occupied in the previous time step plus the number that were colonized
+	  #now calculate how many of these go extinct
+	ext <- rbinom(1, P.temp, e)
+	
+	#calculate the change in the number of occupied patches
+	P.simu[i] <-  P.temp - ext#the number of occupied patches at the current time point is equal to the number of occupied patches minus the number that went extinct
+	
+}
+
+
+```
+
+
+```{r}
+
+plot(x=tset, y=P.simu, type="l", ylim=c(0, N))
+
+```
+
+
+# Global dispersal pool
+Keep track of the number of individuals in each patch, at each time point calculate total number of propagules from all patches, distribute them to each patch, also calculate the number of individuals that die in each patch. Assume that once an individual arrives in a patch it stays there, and every individual born in a patch is a propagule that enters the global pool
+
+```{r}
+#define parameters
+N <- 10#number of patches
+b <- 0.3#per capita probability of birth
+e <- 0.2 #probability of extinction
+pcol <- 0.25#probability that a propagule colonizes each patch
+
+tmax <- 150#length of simulation
+
+#time values to iterate over
+tset <- seq(from = 0, to = tmax, length.out = tmax)
+
+# create a holding matrix for the populations in each patch (each row is a time point, each column is a patch)
+N.simu <- matrix(data = NA, 
+                  nrow = length(tset), ncol = N)	
+
+# fill initial conditions in the first row: random order of population sizes from 0-5
+N.simu[1, ] <- sample(0:5, 10, replace = TRUE)
+
+for(i in 2:length(tset)){
+	
+   p_made <- sapply(N.simu[i-1, ], function(z) rbinom(1, z, b))  #calculate the number of propagules that are made in each patch at this time point (bionomial dist. where number of trials=pop size and prop of success=probability of birth)
+	 p_tot <- sum(p_made) #calculate the total number of propagules made
+	 
+	 #make holding vector to keep track of the propagule pool
+	pool.sim <- NaN*c(1:(N+2)); pool.sim[1:2] <- p_tot
+	#holding vector to keep track of the number of colonizers
+	col.sim <- NaN*c(1:N)
+	
+	for(k in 1:N){
+	  
+	   col.sim[k] <- rbinom(1, pool.sim[k+1], pcol)#the number of colonizers is drawn from a binomial distribution where the number of trials is the size of the propagule pool and the probability of each propagule entering is pcol
+	  	  
+	  pool.sim[k+2] <- pool.sim[k+1] - col.sim[k]#update the size of the propagule pool by subtracting the number of propagules that entered the patch
+	  
+	}
+	
+	#now randomize the vector of colonizers (assume that the propagules encounter patches randomly, instead of always having col.sim[1] go to the first patch and col.sim[2] go to the second, etc.)
+	col_rand <- sample(col.sim, N, replace = FALSE)
+	 
+	 for(j in 1:N){#for each patch
+	   
+	     col <- col_rand[j]#the number of colonizers in the patch 
+	 
+	 
+	  #calculate the number of deaths in each patch
+	  ext <- rbinom(1, N.simu[i-1, j] + col, e)#calculate extinctions after colonization has occurred
+	 
+	  #calculate the new population size in the patch
+  N.simu[i, j] <- N.simu[i-1, j] + col - ext
+	 
+	 }
+	 
+}
+
+```
+
+
+```{r}
+plot(x=tset, y=N.simu[ , 1], type="l", ylim=c(0, max(N.simu)))
+lines(x=tset, y=N.simu[ , 5], type="l", col="blue")
+lines(x=tset, y=N.simu[ , 10], type="l", col="green")
+```
+
+
+# Fixed network
+
+A fixed network of neighbor connections described by a matrix, here just consider the simplest case where each patch is connected to exactly one other patch (and the connections are asymmetrical, e.g., patch 1 might send all its propagules to patch 2, and patch 2 might send its propagules to patch 5)
+```{r}
+#make the adjency matrix: simplest case is that propagules from each patch go to only one other patch
+adj_mat <- matrix(data = NaN, byrow=TRUE,
+                  nrow = N, ncol = N)
+
+for(i in 1:N){
+  adj_mat[i, ] <- sample(c(1, rep(0, N-1)), N, replace=FALSE)
+}#makes matrix where each row has exactly one 1 and the rest of the entries are 0
+
+adj_mat
+
+```
+
+```{r}
+
+#define parameters
+N <- 10#number of patches
+b <- 0.5#per capita probability of birth
+e <- 0.2 #probability of extinction
+pcol <- 0.3#probability that a propagule colonizes each patch
+
+tmax <- 100#length of simulation
+
+#time values to iterate over
+tset <- seq(from = 0, to = tmax, length.out = tmax)
+
+# create a holding matrix for the populations in each patch (each row is a time point, each column is a patch)
+N.simu <- matrix(data = NA, 
+                  nrow = length(tset), ncol = N)	
+
+# fill initial conditions in the first row: random order of population sizes from 0-5
+N.simu[1, ] <- sample(0:5, 10, replace = TRUE)
+
+
+for(i in 2:length(tset)){
+	
+  #calculate the number of propagules made in each patch
+   p_made <- sapply(N.simu[i-1, ], function(z) rbinom(1, z, b))  #calculate the number of propagules that are made in each patch at this time point (bionomial dist. where number of trials=pop size and prop of success=probability of birth)
+	 
+ #calculate the number of these propagules that will successfully colonize
+   p_col <- sapply(p_made, function(z) rbinom(1, z, pcol)) 
+
+   #use the adjency matrix to assign the colonizers to the correct locations 
+   p_col.site <-p_col %*% adj_mat
+	 
+	 for(j in 1:N){#for each patch
+	   
+	     new_col <- p_col.site[j]#the number of colonizers in the patch 
+	 
+	  #calculate the number of deaths in each patch
+	  ext <- rbinom(1, N.simu[i-1, j] +  new_col, e)#calculate extinctions after colonization has occurred
+	 
+	  #calculate the new population size in the patch
+  N.simu[i, j] <- N.simu[i-1, j] +  new_col - ext
+	 
+	 }
+	 
+}
+
+
+```
+
+
+```{r}
+plot(x=tset, y=N.simu[ , 1], type="l")
+lines(x=tset, y=N.simu[ , 5], type="l", col="blue")
+lines(x=tset, y=N.simu[ , 10], type="l", col="green")
+```
+
+
+

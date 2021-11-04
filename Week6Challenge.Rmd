@@ -1,0 +1,31 @@
+---
+title: "Week 7: Stochastic Parasitoids"
+author: "Stephen R. Proulx"
+date: "11/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tictoc)
+```
+
+## The Nicholson-Bailey model
+This model has two species and is a discrete time set of recursion equations. The host (or prey) has a reproductive rate that does not have any density dependence (so this model only makes sense when their density is low enough), and an attack rate of parasitoids that is dependent on parasitoid density only. 
+$$
+N_{t+1} = \lambda N_t e^{-a P_t}\\
+P_{t+1} = b N_t (1 - e^{-a P_t})
+
+$$
+This model is not very stable, it easily can lead to both species reaching very low density, and if the parasitoids are almost extinct then the hosts can reach very high density.
+
+### Numerical simulation challenge 
+Numerically update this system of two difference equations. The only tricky part here is to make sure that you use the last time step values for both $N$ and $P$ when updating each of them.
+
+
+### Stochastic simulation challenge
+To make this a model with discrete numbers of individuals we need to add stochasticity in three places. First, the term $e^{-a P}$ represents the probability that a host is *not* attacked. So we can use this, with a binomial distribution, to figure out how many hosts survive. Once we have that, we have the terms we need to calculate the expected number of hosts and parasitoids from the equations above. The most straightforward assumption is that births are Poisson distributed, and as it turns out the sum of independent Poisson random variables is Poisson too, so we can use the expected number of hosts as the Poisson parameter for the host equation, and the expected number of parasitoids as the Poisson parameter for the Parasitoid equation.
+
+

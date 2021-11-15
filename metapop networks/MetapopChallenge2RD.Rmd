@@ -1,0 +1,152 @@
+---
+title: "Metapop Network Simulation"
+author: "Raine Detmer"
+date: "10/29/2021"
+output: html_document
+---
+
+Make symmetric adjency matrix: symmetric matrix (so if i is connected to j then j is connected to i) with zeros on the diagonal (i.e., propagules don't disperse to natal patch), fill in the upper diagonal (random, with for each i=j the probability of connection between i and j is pc, if there is a connection fill in a 1, if no connection fill in 0)
+
+within-patch dynamics are described by stochastic logistic growth model with density-dependence in the birth rate, constant probability of death
+
+per-individual probability of dispersing, probability of patch extinction
+
+for each patch, have binomial distribution for the number of individuals that emigrate (and need to subtract these emigrants from this patch): have the number of dispersers from each patch, then multinomial distribution decides where they go (ex. if a patch is connected to 3 others, then each individual has a 1/3 chance of going to any one of these 3 patches), then need to add the emigrants to the patch they go to
+
+extinctions: binomial distribution gives the number of patches that will go extinct, then randomly select this number of patchs (without replacement) from the total, set population size in these patches to 0
+
+# Make adjency matrix
+```{r}
+N <- 10#number of patches
+pc <- 0.4#probability of connection between patches
+
+#make the adjency matrix
+adj_mat <- matrix(data = NaN, byrow=TRUE,
+                  nrow = N, ncol = N)
+
+#make upper triangular matrix
+for(j in 1:N){
+for(i in 1:N){
+  if(i<j){
+  adj_mat[i, j] <- rbinom(1, 1, pc)#one trial, probability of success is pc
+  }
+  else{
+    adj_mat[i, j] <- 0
+    }
+}#makes matrix where each row has exactly one 1 and the rest of the entries are 0
+}  
+
+#make this a symmetric matrix
+adj_mat[lower.tri(adj_mat)] <-  t(adj_mat)[lower.tri(adj_mat)]
+
+adj_mat
+```
+
+Check that the adjency matrix is symmetric
+```{r}
+symm_test <- NaN*adj_mat
+
+for(j in 1:N){
+for(i in 1:N){
+  
+  if(adj_mat[i, j]==adj_mat[j, i]){
+     symm_test[i, j] <- "T"
+  }
+  else{
+   symm_test[i, j] <- "F"
+    }
+}
+}  
+
+symm_test
+
+```
+
+```{r}
+
+#define parameters
+#N <- 10#number of patches
+alpha <- 0.6#per capita probability of birth
+beta <- 0.1#per capita propability of death
+k <- 40#carrying capacity in each patch
+delta <- 1#time step
+e <- 0.005 #probability of patch extinction
+d <- 0.5 #probability of dispersal
+
+tmax <- 100#length of simulation
+
+#time values to iterate over
+tset <- seq(from = 0, to = tmax, by = delta)
+
+# create a holding matrix for the populations in each patch (each row is a time point, each column is a patch)
+N.simu <- matrix(data = NA, 
+                  nrow = length(tset), ncol = N)	
+
+# fill initial conditions in the first row: random order of population sizes from 1-40
+N.simu[1, ] <- sample(1:40, 10, replace = TRUE)
+
+#function for the population growth in each patch (births and deaths), this will be a function of N.simu[i-1]
+#make this only a function of population size (make other parameters global and define them outside of the function)
+pop_growth <- function(N.size){
+  
+  births <- rbinom(1, N.size, (N.size < k)*alpha*delta*(1-N.size/k))#return 1 number drawn from Binomial distribution with number of trials= population size at previous time point and probability of each trial given by the probability of birth* the logistic function of the population size at the previous time point. To avoid situation with negative probability, added the Boolean operator so if N ever gets larger than k, the whole term for probability evaulates to 0 (probability of birth is 0)
+  
+  #calculate number of deaths:
+	deaths <- rbinom(1, N.size, beta*delta)#return 1 number drawn from Binomial distribution with number of trials= population size at previous time point and probability of each trial given by the probability of death
+	
+ pop_change <- births - deaths
+ 
+ return(pop_change)
+  
+}
+
+
+for(i in 2:length(tset)){
+  
+  #calculate the number of emigrants from each patch
+   n_em <- sapply(N.simu[i-1, ], function(z) rbinom(1, z, d))  #calculate the number of emigrants from each patch at this time point (bionomial dist. where number of trials=pop size and prop of success=probability of dispersal)
+   
+  #fill in the adjency matrix with the actual number of emigrants at each connection (replace the 1's with number of emigrants), call this matrix all_ems
+   all_ems <- adj_mat
+   for(l in 1:N){#for each row in the adjency matrix (all the patches that the lth patch might disperse to)
+    
+    assign_em1 <-  as.vector(rmultinom(1, n_em[l], c(rep(1/sum(adj_mat[l, ]), sum(adj_mat[l, ])))))#n_em[l] individuals emigrating from the lth patch, the number of patches they can disperse to is equal to the number of 1's in the lth row of the adjency matrix (so the sum of the elements in the lth row is the total number of patches that the emigrants from patch 1 can disperse to), probability of dispersing to each patch is 1/total number of nonzero elements in the lth row of the adjency matrix
+     #this gives the number that go to each patch but doesn't specify which patch, so need to put these numbers where the 1's are in the adjency matrix: use replace
+    all_ems[l, ] <- replace(adj_mat[l, ], which(adj_mat[l, ]==1), assign_em1)#replace all elements in the lth row of the adjecny matrix that are equal to 1 with the elements in assign_em1
+    
+   }
+	 
+
+  #calculate the patches that go extinct
+	 #select number of patches, randomly select this number of patches and set N.simu to 0
+   N_ext <- rbinom(1, N, e)
+   ext_patch <- sample(N, N_ext, replace = FALSE)
+	 for(j in 1:N){#for each patch
+	   
+	   if(j %in% ext_patch){
+	      N.simu[i, j] <- 0#if the jth patch is in ext_patch, it goes extinct
+	   }else{
+	     N.simu[i, j] <- N.simu[i-1, j] + sum(all_ems[, j]) + pop_growth(N.simu[i-1, j])-n_em[j]#the total number of immigrants to patch j is the sum of the jth column of the all_ems matrix, then add the change in population given by birth and death, also need to subtract the number of individuals that emigrate from this patch
+	   }
+	   
+	 
+	   }
+	   
+
+	 
+	 }
+	 
+
+```
+
+
+```{r}
+plot(x=tset, y=N.simu[ , 1], type="l", ylim=c(0, max(N.simu)))
+lines(x=tset, y=N.simu[ , 5], type="l", col="blue")
+lines(x=tset, y=N.simu[ , 10], type="l", col="green")
+
+```
+
+
+
+

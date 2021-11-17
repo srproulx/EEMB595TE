@@ -1,0 +1,123 @@
+---
+title: "Week 8(or so): Epigenetic Inheritance"
+author: "Stephen R. Proulx"
+date: "11/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tictoc)
+```
+
+## Epigenetic inheritance
+
+There are lots and lots of things that people can mean by the phrase "epigenetic inheritance." The main idea is that modifications of the phenotype that happen during one generation can be passed on to the next generation (and that this isn't tightly tied to genotypes/genetic variance). 
+
+## Autocorrelation in the environment
+We'll consider a situation where the enviornment follows an AR(1) process: that is an Autoregressive process that depends only on the most recent past. An AR(1) process is a combination of a "random walk" and a tendency for the process to return towards 0. 
+
+The definition for the process is 
+$$
+X_{t+1} = \phi X_t + (1-\phi) 0 + w_t,
+$$
+Where $\phi$ represents how much the next time step is weighted towards the last time step. I explicitly wrote out the $(1-\phi) 0$ to emphasize that this is a weighted average of the last time step and the value 0. If your process tends towards a value other than 0, you could replace the 0 with that value. 
+
+$w_t$ is the white noise process that is added in, where
+$$
+w_t \sim \mathrm{Normal}(0,\sigma^2)
+$$
+
+We will generally require that $-1<\phi<1$, which preserves the idea that there is a weighted average between the recent past and the mean tendency of the process. If $\phi$ is out of these bounds, then the process moves or spirals out to infinity. 
+
+
+Let's try it for positive autocorrelation:
+```{r}
+#set parameters
+phi=0.7;
+sigma=0.15;
+
+#initialize the tibble
+ar1_series <- tibble(time=seq(1:200), wt=rnorm(200, mean = 0 , sd = sigma))
+
+
+#calculate the weighted average state values
+ar1_series<-ar1_series %>% 
+  mutate(X = accumulate(wt[2:n()], function(x, y) (x*phi + y), .init = 0))
+```
+
+and plot it
+```{r}
+ggplot(data=ar1_series , aes(x=time,y=X)) + geom_line()
+```
+
+
+And now for negative autocorrelation:
+```{r}
+#set parameters
+phi=-0.7;
+sigma=0.15;
+
+#initialize the tibble
+ar1_series <- tibble(time=seq(1:200), wt=rnorm(200, mean = 0 , sd = sigma))
+
+
+#calculate the weighted average state values
+ar1_series<-ar1_series %>% 
+  mutate(X = accumulate(wt[2:n()], function(x, y) (x*phi + y), .init = 0))
+```
+
+and plot it
+```{r}
+ggplot(data=ar1_series , aes(x=time,y=X)) + geom_line()
+```
+
+## Phenotypic inheritance
+One way that epigenetic inheritance can work is that offspring develop a phenotype that is dependent on their parent's phenotype. A very simple model is one where offspring "remember" their parents phenotype with a probability that does not depend onthe enviornemnt. So if there are two parental phenotypes, we can use a transition matrix to represent offspring phenotype
+$$
+A = \begin{pmatrix}
+\beta_1 & 1-\beta_2 \\
+1-\beta_2 & \beta_2
+\end{pmatrix}
+$$
+
+So a population that has a fraction  $p$ of individuals with phenotype 1 can be described by the vector $v=( p, 1-p)$. The frequency following inheritance is $v.A$. 
+
+We'll assume that the two phenotypes have values of 0.5 and -0.5.
+
+
+## Fitness/selection
+We are going to consider a population with no genetic variance, but that has phenotypic variance. Survivorship can be defined as a Gaussian function of the enviroment $X$ and the phenotype $z$
+$$
+w(X,z) = e^{-(z-X)^2/(2 \omega^2)},
+$$
+where $\omega$ represents the steepness of the fitness function. If $\omega$ is small then there is a big cost to having a phenotype different from the environmental optima. 
+
+We can make this a function, i.e.
+```{r}
+omega=0.8
+
+w <- function(z, X) {
+   exp(-(z-X)^2/(2*omega^2)) 
+}
+```
+
+
+## Simulating the whole process
+We now have all of the parts we need in order to perform a simulation of how phenotypes change with the environment. We have to choose a life-cycle order (really this is to have consistent bookkeeping), so we will do selection $\rightarrow$ inheritance.
+
+The simulation will involve first making a dataframe with the environemnt, and then in each time step we will apply selection, and then apply inheritance. There is no density dependence here, so the population as a whole may decline towards 0 or grow indefinitely, but we'll be interested in relative growth rates. 
+
+
+
+## Population growth rate 
+In order to calculate the long term growth rate we want to figure out what exponentially growing population would mimic our more complicated process. This can be found as follows
+$$
+\lambda = e^{ 1/T * log(n_t/n_0)},
+$$
+where $T$ is the number of generations, and $n_t$ is the total population size at generation $t$.
+
+## The challenge:
+Simulate the population growth rate for different epigenetic memory functions and calculate the long term fitness of the population. I suggest scanning values of $\beta_1=\beta_2$ between 0 and 1. For positive and negative autocorrelation you should see very different results.
